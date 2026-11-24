@@ -52,6 +52,10 @@ class SHUKLA(Client):
         self.username = me.username or "None"
         self.mention = me.mention
 
+        # BOT_USERNAME env is optional; auto-fill it so plugins never get an empty value
+        if not config.BOT_USERNAME:
+            config.BOT_USERNAME = self.username
+
         try:
             await self.send_message(
                 chat_id=config.LOGGER_ID,
