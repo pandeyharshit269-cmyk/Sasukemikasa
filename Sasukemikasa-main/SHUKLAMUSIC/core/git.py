@@ -39,6 +39,18 @@ def install_req(cmd: str) -> Tuple[str, str, int, int]:
     return asyncio.get_event_loop().run_until_complete(install_requirements())
 
 def git():
+    # Auto-update is optional. Without UPSTREAM_REPO there is nothing to pull.
+    if not config.UPSTREAM_REPO:
+        LOGGER(__name__).info("UPSTREAM_REPO not set, skipping git update check.")
+        return
+    try:
+        _git_update()
+    except Exception as e:
+        # Never let a git problem stop the bot from starting
+        LOGGER(__name__).warning(f"Git update skipped: {type(e).__name__}: {e}")
+
+
+def _git_update():
     REPO_LINK = config.UPSTREAM_REPO
     if config.GIT_TOKEN:
         GIT_USERNAME = REPO_LINK.split("com/")[1].split("/")[0]
@@ -48,9 +60,9 @@ def git():
         UPSTREAM_REPO = config.UPSTREAM_REPO
     try:
         repo = Repo()
-        LOGGER(__name__).info(f"Git Client Found [VPS DEPLOYER]")
+        LOGGER(__name__).info("Git Client Found [VPS DEPLOYER]")
     except GitCommandError:
-        LOGGER(__name__).info(f"Invalid Git Command")
+        LOGGER(__name__).info("Invalid Git Command")
     except InvalidGitRepositoryError:
         repo = Repo.init()
         if "origin" in repo.remotes:
@@ -66,10 +78,6 @@ def git():
             origin.refs[config.UPSTREAM_BRANCH]
         )
         repo.heads[config.UPSTREAM_BRANCH].checkout(True)
-        try:
-            repo.create_remote("origin", config.UPSTREAM_REPO)
-        except BaseException:
-            pass
         nrs = repo.remote("origin")
         nrs.fetch(config.UPSTREAM_BRANCH)
         try:
@@ -77,4 +85,4 @@ def git():
         except GitCommandError:
             repo.git.reset("--hard", "FETCH_HEAD")
         install_req("pip3 install --no-cache-dir -r requirements.txt")
-        LOGGER(__name__).info(f"Fetching updates from upstream repository...")
+        LOGGER(__name__).info("Fetching updates from upstream repository...")
